@@ -13,4 +13,8 @@ airportsdata==20260315  # flight informations
 pycountry ==26.2.16   # all country informations
 fastapi ==0.136.3
 uvicorn ==0.48.0
-jinja2==3.1.6
+jinja2==3.1.6 
+langchain-mcp-adapters ==0.3.0 # crete mcp clinent
+nest_asyncio==1.6.0 # parell procenig mcp client processing
+mcp==1.28.1 
+uv==0.12.3

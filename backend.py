@@ -1,4 +1,6 @@
 import os 
+import asyncio
+import time
 import certifi  # prevent path issues
 from dotenv import load_dotenv
 
@@ -28,8 +30,11 @@ from langchain_core.messages import (
    SystemMessage
 )
 from langchain_groq import ChatGroq 
-from tools.tavily_tool import tavily_search
-from tools.flight_tool import search_flights 
+#from tools.tavily_tool import tavily_search
+#from mcp_client_test import tavily_mcp_search
+#from tools.flight_tool import search_flights 
+
+from mcp_client import tavily_mcp_search, aviations_mcp_call   # aviation function call from mc_client.py
 
 def get_database_url():
     get_database_url= os.getenv("DATABASE_URL")
@@ -99,8 +104,8 @@ class TravelState(TypedDict):
     llm_calls: int   
 
 
-# flight agent 
-
+# flight agent without MCP
+"""
 def flight_agent(state: TravelState):
     query = state["user_query"]
     flight_data = search_flights(query)
@@ -114,13 +119,53 @@ def flight_agent(state: TravelState):
          "llm_calls": state.get("llm_calls",0)+1
 
 
-    }
+    }"""
+
+# flight agent with mcp  tool router prompt
+
+FLIGHT_AGENT_PROMPT="""
+you are a travel flight expert.
+
+user Query:
+{query}
+
+Airport informations
+{airport_data}
+
+airline informations:
+{airlline_data}
+
+
+Genrate:
+
+
+1. Likely departure airport
+2. Likely arrival airport
+3. Airline Servicess this route 
+4. typical flight Duration
+5. Estimated airfare range 
+6. peeek reason pricing warning 
+7. booking advice 
+
+return concise travel guidance.
+"""
+
+
+
+
+
+
+
+
+
+
 
 # hotel agent
 
 def hotel_agent(state: TravelState):
     query = f"Best hotels for{state['user_query']}"
-    hotel_results = tavily_search(query)
+    #hotel_results = tavily_search(query)
+    hotel_results = asyncio.run(tavily_mcp_search(query))
 
     return{
         "hotel_results": hotel_results,
@@ -206,15 +251,57 @@ Important:
 - Mention that live flight API may not provide ticket prices if pricing is unavailable.
 - Keep the response useful for real travel planning.
 """
-    responce =llm.invoke(
-        [ SystemMessage(content="you are a professional AI travel booking assistance"),
-          HumanMessage(content=final_prompt)
+
+def flight_agent(state: TravelState):
+    print("\nINSIDE FLIGHT AGENT\n")
+    query = state["user_query"]
+
+    try: 
+        airports = asyncio.run(
+            aviations_mcp_call(
+             
+                    "list_airports"
+                )
+            )
+        airlines = asyncio.run(
+                aviations_mcp_call(
+                "list_airlines"
+                )
+            )
+        print("\n AIRPORTS:", airports)
+        print("\n AIRLINes:", airlines) 
+
+        prompt = FLIGHT_AGENT_PROMPT.format(
+            query = query,
+            airport_data =str(airports)[:300],
+            airline_data =str(airlines)[:300]
+        )
+
+        
+
+
+        
+        responce =llm.invoke(
+            [ SystemMessage(content="you are expert flight planerr"),
+            HumanMessage(content=prompt)
 
         ]
-    )
+        )
+
+        flight_data = responce.content
+
+    except Exception as e:
+        flight_data =f"flight information unavilabe:{str(e)}"
+
+
 
     return {
-        "messages":[responce],
+        "flight_results": flight_data,
+        "message":[
+            AIMessage(
+                content= "flight recommendations generated"
+            )
+        ],
         "llm_calls": state.get("llm_calls",0)+1
     }  
 
@@ -240,11 +327,18 @@ graph.add_edge("final_agent", END)
 # =========================
 DATABASE_URL = get_database_url()
 
-_conn = psycopg.connect(
-    DATABASE_URL,
-    autocommit=True,
-    row_factory=dict_row
-)
+for attempt in range(3):
+    try:
+        _conn = psycopg.connect(
+            DATABASE_URL,
+            autocommit=True,
+            row_factory=dict_row
+        )
+        break
+    except psycopg.OperationalError:
+        if attempt == 2:
+            raise
+        time.sleep(1)
 
 checkpointer = PostgresSaver(_conn)
 checkpointer.setup()
