@@ -14,7 +14,8 @@ os.environ["SSL_CERT_FILE"] = certifi.where()
 os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
 
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
-AVIATIONSTACCK_API_KEY =os.getenv("AVIATIONSTACCK_API_KEY")
+AVIATIONSTACCK_API_KEY =os.getenv("AVIATIONSTACCK_API_KEY") 
+OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY") 
 
 clinet = MultiServerMCPClient(
 
@@ -35,7 +36,19 @@ clinet = MultiServerMCPClient(
     ],
     "env": {
         "AVIATION_STACK_API_KEY": AVIATIONSTACCK_API_KEY
-    }
+    },
+        "weather": {
+                  "transport": "stdio",
+                  # python file to excute python client path anaconda 
+                  "command": r"C:\Users\Pankaj.Gangurde\AppData\Local\miniconda3\python.exe",
+                  "args": [
+                  "-m", "uv", "tool", "run", "--python", "3.13",
+                  "--with", "mcp==1.28.1", "aviationstack-mcp"
+              ],
+              "env": {
+                  "AVIATION_STACK_API_KEY": AVIATIONSTACCK_API_KEY
+              }
+
 }
     }
     
