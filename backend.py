@@ -37,9 +37,9 @@ from langchain_groq import ChatGroq
 from mcp_client import tavily_mcp_search, aviations_mcp_call   # aviation function call from mc_client.py
 
 def get_database_url():
-    get_database_url= os.getenv("DATABASE_URL")
+    database_url = os.getenv("DATABASE_URL")
 
-    if not get_database_url:
+    if not database_url:
         raise ValueError(
 
             "DATABASE_URL is missing. please add your rdender postggreSql external database URL to .env"
@@ -59,9 +59,9 @@ SSL/TLS encrypts the data transferred between
 the Python application and PostgreSQL database.
 '''
 
-    if "sslmode=" not in get_database_url:
-        separtor ="&" if "?" in get_database_url else "?"
-        database_url =f"{get_database_url}{separtor}sslmode= require"
+    if "sslmode=" not in database_url:
+        separator = "&" if "?" in database_url else "?"
+        database_url = f"{database_url}{separator}sslmode=require"
 
     return database_url 
 
